@@ -1,3 +1,4 @@
+```markdown
 # TCDB DIAMOND Result Analyzer / TCDB DIAMOND 结果分析器
 
 > **Disclaimer / 免责声明**
@@ -23,10 +24,10 @@
 
 > **Not supported / 不支持：**
 > - Native Windows CMD / PowerShell (use WSL or Git Bash / 使用 WSL 或 Git Bash)
-> - macOS default Bash (ships Bash 3.2; the script does not require associative arrays and may work, but has not been thoroughly tested on 3.2)
 > - macOS default `sort` (the script uses `sort -g` for numeric sorting; BSD `sort` lacks `-g` and will fail)
-> - macOS 默认 Bash（自带 3.2；脚本实际未使用关联数组，可能可用但未充分测试）
 > - macOS 自带的 `sort`（脚本使用了 `sort -g`，BSD `sort` 不支持此选项，会报错）
+> - macOS default Bash (ships Bash 3.2; the script does not use associative arrays and may work on 3.2, but `sort -g` remains an issue)
+> - macOS 默认 Bash（自带 3.2；脚本未使用关联数组，可能可用，但 `sort -g` 问题仍需解决）
 >
 > **macOS workaround / macOS 解决方案：**
 >
@@ -49,8 +50,12 @@
 >    **在更新后的环境中运行脚本：**
 >    ```bash
 >    export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
->    /opt/homebrew/bin/bash tcdb_analyzer_v2.7.1.sh -i ...
+>    /opt/homebrew/bin/bash tcdb_analyzer_v2.7.2.sh -i ...
 >    ```
+>
+> **v2.7.2 Note / v2.7.2 注意：** As of this version, `check_dependencies()` includes an automatic `sort -g` capability test. If your `sort` does not support `-g`, the script will exit with a clear error message and suggest installing GNU coreutils.
+>
+> 自 v2.7.2 起，`check_dependencies()` 包含自动 `sort -g` 兼容性检测。如果你的 `sort` 不支持 `-g`，脚本会给出明确报错并建议安装 GNU coreutils。
 
 **No other dependencies / 无其他依赖：** 纯 Bash + AWK，无需 R / Python / 其他解释器。
 
@@ -93,19 +98,19 @@ Parse DIAMOND BLASTP results against the TCDB (Transporter Classification Databa
 ```bash
 # Default: E-value < 1e-6, best hit per protein, TSV output
 # 默认：E-value < 1e-6，每蛋白保留最佳 hit，输出 TSV
-./tcdb_analyzer_v2.7.1.sh -i diamond_results.tsv -d tcdb.faa -o output
+./tcdb_analyzer_v2.7.2.sh -i diamond_results.tsv -d tcdb.faa -o output
 
 # Also generate CSV alongside TSV
 # 同时生成 CSV 和 TSV
-./tcdb_analyzer_v2.7.1.sh -i diamond_results.tsv -d tcdb.faa -o output -x
+./tcdb_analyzer_v2.7.2.sh -i diamond_results.tsv -d tcdb.faa -o output -x
 
 # Stricter filtering
 # 更严格的过滤条件
-./tcdb_analyzer_v2.7.1.sh -i diamond_results.tsv -d tcdb.faa -o output -e 1e-8 -l 100 -b 100
+./tcdb_analyzer_v2.7.2.sh -i diamond_results.tsv -d tcdb.faa -o output -e 1e-8 -l 100 -b 100
 
 # Keep all hits (no deduplication), CSV only
 # 保留所有 hit（不去重），只输出 CSV
-./tcdb_analyzer_v2.7.1.sh -i diamond_results.tsv -d tcdb.faa -o output -a -f csv
+./tcdb_analyzer_v2.7.2.sh -i diamond_results.tsv -d tcdb.faa -o output -a -f csv
 ```
 
 ---
@@ -119,7 +124,7 @@ Download the script and make it executable:
 下载脚本后赋予执行权限即可：
 
 ```bash
-chmod +x tcdb_analyzer_v2.7.1.sh
+chmod +x tcdb_analyzer_v2.7.2.sh
 ```
 
 > See [Prerequisites / 前置要求](#prerequisites--前置要求) for system requirements.
@@ -184,7 +189,7 @@ wget -O tcdb.faa "https://www.tcdb.org/public/tcdb"
 
 | Parameter / 参数 | Default / 默认值 | Description / 说明 |
 |-------------------|-----------------|-------------------|
-| `-i` | *(required)* | DIAMOND output file / DIAMOND 输出文件 **（必填）** |
+| `-i` | *(required)* | DIAMOND output file / DIAMOND 输出文件 **（必填）**；v2.7.2 起支持 `.gz` 压缩格式 |
 | `-d` | *(required)* | TCDB FASTA file (for TC validation) / TCDB FASTA 文件（用于验证 TC 编号） **（必填）** |
 | `-o` | *(required)* | Output file prefix / 输出文件前缀 **（必填）** |
 | `-e` | `1e-6` | E-value threshold (strict `<`) / E-value 阈值（严格小于） |
@@ -194,15 +199,6 @@ wget -O tcdb.faa "https://www.tcdb.org/public/tcdb"
 | `-a` | `no` | Keep all hits (no deduplication) / 保留所有 hit（不去重）。`yes` or / 或 `no` |
 | `-f` | `tsv` | Output format / 输出格式：`tsv` or / 或 `csv` |
 | `-x` | `no` | Generate both TSV and CSV / 同时生成 TSV 和 CSV。`yes` or / 或 `no` |
-
-### Version / 版本
-
-```bash
-./tcdb_analyzer_v2.7.1.sh --version   # or -v
-```
-
-Displays the script version and exits.  
-显示脚本版本并退出。
 
 ---
 
@@ -241,8 +237,9 @@ Displays the script version and exits.
 
 ## TC Class Reference / TC 类别参考
 
-> **Note / 注意：** Class 6 and 7 are not specifically mapped in this version and will appear as "Other".  
-> 本版本未单独映射第 6 类和第 7 类，它们会显示为 "Other"。
+> **Note / 注意：** Class 6 and Class 7 are **reserved (unassigned)** in the TCDB classification system. They contain no actual transporter families and will never appear in analysis results. The script correctly excludes them from class labels.
+>
+> Class 6 和 Class 7 在 TCDB 分类体系中为**预留编号**，未分配任何实际转运蛋白家族，永远不会出现在分析结果中。脚本正确地不包含它们的标签映射。
 
 | Class / 类别 | Label / 标签 | Description / 说明 |
 |--------------|--------------|-------------------|
@@ -251,8 +248,8 @@ Displays the script version and exits.
 | 3 | `Primary_Active` | Primary active transporters / 原主动转运蛋白 |
 | 4 | `Group_Translocators` | Group translocators / 基团转运蛋白 |
 | 5 | `TM_Electron_Carriers` | Transmembrane electron carriers / 跨膜电子载体 |
-| 6 | `Other` | Not defined in current version; labeled as "Other" / 当前版本未定义，标记为 "Other" |
-| 7 | `Other` | Not defined in current version; labeled as "Other" / 当前版本未定义，标记为 "Other" |
+| 6 | — | Reserved (no families assigned) / 预留（未分配家族） |
+| 7 | — | Reserved (no families assigned) / 预留（未分配家族） |
 | 8 | `Accessory_Factors` | Accessory factors involved in transport / 转运辅助因子 |
 | 9 | `Uncharacterized` | Functionally uncharacterized transporters / 功能未表征转运蛋白 |
 
@@ -300,7 +297,7 @@ E-value 比较使用 `-log10` 转换，以可靠处理科学计数法（如 `1e-
 ### Example 1: Basic usage / 基本用法
 
 ```bash
-./tcdb_analyzer_v2.7.1.sh \
+./tcdb_analyzer_v2.7.2.sh \
   -i diamond_out.tsv \
   -d tcdb.faa \
   -o results
@@ -309,7 +306,7 @@ E-value 比较使用 `-log10` 转换，以可靠处理科学计数法（如 `1e-
 ### Example 2: Exclude uncharacterized (Class 9) / 排除未表征家族（第 9 类）
 
 ```bash
-./tcdb_analyzer_v2.7.1.sh \
+./tcdb_analyzer_v2.7.2.sh \
   -i diamond_out.tsv \
   -d tcdb.faa \
   -o results \
@@ -319,7 +316,7 @@ E-value 比较使用 `-log10` 转换，以可靠处理科学计数法（如 `1e-
 ### Example 3: Strict filtering + dual output / 严格过滤 + 双格式输出
 
 ```bash
-./tcdb_analyzer_v2.7.1.sh \
+./tcdb_analyzer_v2.7.2.sh \
   -i diamond_out.tsv \
   -d tcdb.faa \
   -o results \
@@ -332,7 +329,7 @@ E-value 比较使用 `-log10` 转换，以可靠处理科学计数法（如 `1e-
 ### Example 4: Keep all hits for downstream analysis / 保留所有 hit 用于下游分析
 
 ```bash
-./tcdb_analyzer_v2.7.1.sh \
+./tcdb_analyzer_v2.7.2.sh \
   -i diamond_out.tsv \
   -d tcdb.faa \
   -o results \
@@ -370,24 +367,24 @@ wget https://github.com/bbuchfink/diamond/releases/latest/download/diamond-linux
 ### TC numbers not extracted / TC 编号未提取
 
 **English:**
-The script extracts TC numbers from the `stitle` column using regex. Supported formats include:
-- `TC#1.A.1.1.1`
-- `TC 1.A.1.1.1`
-- `1.A.1.1.1` (at start of description)
+The script extracts TC numbers from the `stitle` column using regex. Supported formats:
+- `1.A.1.1.1` (5-segment, standard)
+- `1.A.1.1` (4-segment, e.g. some Class 9 entries)
+- `TC#1.A.1.1.1` or `TC 1.A.1.1.1` (with prefix)
 
 **中文：**
-脚本使用正则表达式从 `stitle` 列提取 TC 编号，支持以下格式：
-- `TC#1.A.1.1.1`
-- `TC 1.A.1.1.1`
-- `1.A.1.1.1`（位于描述开头）
+脚本使用正则表达式从 `stitle` 列提取 TC 编号，支持格式：
+- `1.A.1.1.1`（5 段，标准格式）
+- `1.A.1.1`（4 段，如部分 Class 9 条目）
+- `TC#1.A.1.1.1` 或 `TC 1.A.1.1.1`（带前缀）
 
 ### macOS: "sort: invalid option -- g" / macOS 上报错 `sort: invalid option -- g`
 
 **English:**
-The script uses `sort -g` for numeric sorting. BSD `sort` (macOS default) does not support `-g`. Install GNU coreutils and prepend its bin directory to PATH (see [macOS workaround](#prerequisites--前置要求)).
+As of v2.7.2, the script automatically detects `sort -g` support in `check_dependencies()` and exits with a clear error message if unavailable. Install GNU coreutils and prepend its bin directory to PATH (see [macOS workaround](#prerequisites--前置要求)).
 
 **中文：**
-脚本使用了 `sort -g` 进行数值排序，macOS 自带的 BSD `sort` 不支持该选项。请安装 GNU coreutils 并将其 bin 目录添加到 PATH（参见 [macOS 解决方案](#prerequisites--前置要求)）。
+自 v2.7.2 起，脚本在 `check_dependencies()` 中自动检测 `sort -g` 支持，不支持则给出明确报错并退出。请安装 GNU coreutils 并将其 bin 目录添加到 PATH（参见 [macOS 解决方案](#prerequisites--前置要求)）。
 
 ---
 
@@ -395,6 +392,7 @@ The script uses `sort -g` for numeric sorting. BSD `sort` (macOS default) does n
 
 | Version / 版本 | Date / 日期 | Notes / 说明 |
 |---------------|------------|--------------|
+| `v2.7.2` | 2026-06-01 | **Bug fixes / Bug 修复：**[1] 修复 `TEMP_FILES` 数组逗号语法错误导致临时文件残留；[2] 新增 `sort -g` 跨平台兼容性自动检测；[3] TC 编号正则放宽为 4-5 段，兼容非标准 Class 9 条目；[4] 支持 `.gz` 压缩输入文件 |
 | `v2.7.1` | 2026-05-30 | Fixed E-value comparison logic (safe_evalue_cmp), fixed cleanup on empty TEMP_FILES, removed dead code in extract_tc() / 修复 E-value 比较逻辑，修复空 TEMP_FILES 时 cleanup 报错，移除 extract_tc() 死代码 |
 | `v2.7.0` | 2026-05-28 | Previous release / 上一版本 |
 | `v2.x` | 2026-05 | Major rewrite with strict bash mode (`set -euo pipefail`) / 使用严格 bash 模式重写 |
@@ -423,6 +421,6 @@ If you use this tool in a publication, please cite / 如在发表中使用本工
 
 ## Author / 作者
 
-**Jiangyong Li / 李将勇**
+**Jiangyong Li /李将勇**
 - GitHub: [@lijiangyong314](https://github.com/lijiangyong314)
-
+```
